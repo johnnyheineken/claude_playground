@@ -29,6 +29,40 @@ body {
 canvas {
   display: block;
   image-rendering: pixelated;
+  outline: none;
+}
+#touchControls {
+  display: none;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 100;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+#touchControls button {
+  width: 50px;
+  height: 50px;
+  font-size: 22px;
+  background: rgba(0,0,0,0.6);
+  color: #c6a135;
+  border: 2px solid #c6a135;
+  border-radius: 8px;
+  cursor: pointer;
+  touch-action: none;
+}
+#touchControls button:active { background: rgba(196,161,53,0.4); }
+.dpad { display: grid; grid-template-columns: 50px 50px 50px; grid-template-rows: 50px 50px 50px; gap: 4px; }
+.dpad-empty { visibility: hidden; }
+#btnInteract {
+  width: 60px;
+  height: 60px;
+  font-size: 12px;
+  font-weight: bold;
+  position: absolute;
+  bottom: 55px;
+  right: -80px;
 }
 #dialogBox {
   display: none;
@@ -167,7 +201,21 @@ canvas {
 <body>
 
 <div id="gameContainer">
-  <canvas id="gameCanvas" width="960" height="640"></canvas>
+  <canvas id="gameCanvas" width="960" height="640" tabindex="1"></canvas>
+  <div id="touchControls">
+    <div class="dpad" style="position:relative;">
+      <div class="dpad-empty"></div>
+      <button id="btnUp">&#9650;</button>
+      <div class="dpad-empty"></div>
+      <button id="btnLeft">&#9664;</button>
+      <div class="dpad-empty"></div>
+      <button id="btnRight">&#9654;</button>
+      <div class="dpad-empty"></div>
+      <button id="btnDown">&#9660;</button>
+      <div class="dpad-empty"></div>
+      <button id="btnInteract">SPACE</button>
+    </div>
+  </div>
   <canvas id="minimap" width="140" height="140"></canvas>
   <div id="hud">
     <div class="left">
@@ -1261,21 +1309,40 @@ function update(timestamp) {
 }
 
 // --- INPUT ---
+// Map e.key values to the e.code equivalents we use internally
+const KEY_MAP = {
+  'w': 'KeyW', 'W': 'KeyW',
+  'a': 'KeyA', 'A': 'KeyA',
+  's': 'KeyS', 'S': 'KeyS',
+  'd': 'KeyD', 'D': 'KeyD',
+  'ArrowUp': 'ArrowUp', 'ArrowDown': 'ArrowDown',
+  'ArrowLeft': 'ArrowLeft', 'ArrowRight': 'ArrowRight',
+  ' ': 'Space',
+};
+
 document.addEventListener('keydown', (e) => {
-  keys[e.code] = true;
-  if (e.code === 'Space') {
+  const code = e.code || KEY_MAP[e.key] || '';
+  const mappedKey = KEY_MAP[e.key];
+  if (code) keys[code] = true;
+  if (mappedKey) keys[mappedKey] = true;
+  if (code === 'Space' || e.key === ' ') {
     e.preventDefault();
     interact();
   }
 });
 
 document.addEventListener('keyup', (e) => {
-  keys[e.code] = false;
+  const code = e.code || KEY_MAP[e.key] || '';
+  const mappedKey = KEY_MAP[e.key];
+  if (code) keys[code] = false;
+  if (mappedKey) keys[mappedKey] = false;
 });
 
 // --- START ---
 document.getElementById('startBtn').addEventListener('click', () => {
   document.getElementById('titleScreen').style.display = 'none';
+  document.getElementById('startBtn').blur();
+  canvas.focus();
   gameStarted = true;
   generateMap();
   updateCamera();
@@ -1296,6 +1363,49 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
   }
 });
+
+// --- TOUCH CONTROLS ---
+const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+if (isMobile) {
+  document.getElementById('touchControls').style.display = 'block';
+  // Scale canvas for mobile
+  const container = document.getElementById('gameContainer');
+  const scale = Math.min(window.innerWidth / 960, window.innerHeight / 700);
+  if (scale < 1) {
+    container.style.transform = `scale(${scale})`;
+    container.style.transformOrigin = 'top center';
+  }
+}
+
+function setupTouchBtn(id, code) {
+  const btn = document.getElementById(id);
+  let interval = null;
+  const start = (e) => {
+    e.preventDefault();
+    keys[code] = true;
+    interval = setInterval(() => { keys[code] = true; }, 50);
+  };
+  const stop = (e) => {
+    e.preventDefault();
+    keys[code] = false;
+    if (interval) { clearInterval(interval); interval = null; }
+  };
+  btn.addEventListener('touchstart', start, { passive: false });
+  btn.addEventListener('touchend', stop, { passive: false });
+  btn.addEventListener('touchcancel', stop, { passive: false });
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('mouseup', stop);
+  btn.addEventListener('mouseleave', stop);
+}
+
+setupTouchBtn('btnUp', 'ArrowUp');
+setupTouchBtn('btnDown', 'ArrowDown');
+setupTouchBtn('btnLeft', 'ArrowLeft');
+setupTouchBtn('btnRight', 'ArrowRight');
+
+const interactBtn = document.getElementById('btnInteract');
+interactBtn.addEventListener('touchstart', (e) => { e.preventDefault(); interact(); }, { passive: false });
+interactBtn.addEventListener('mousedown', (e) => { e.preventDefault(); interact(); });
 </script>
 </body>
 </html>
