@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spain Simulator 2026 - La Vida Loca Edition</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a0a00;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-family: 'Courier New', monospace;
+  overflow: hidden;
+  color: #fff;
+}
+#gameContainer {
+  position: relative;
+  width: 960px;
+  height: 640px;
+  border: 3px solid #c6a135;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #2a1a0a;
+}
+canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+#dialogBox {
+  display: none;
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  background: rgba(0,0,0,0.92);
+  border: 2px solid #c6a135;
+  border-radius: 8px;
+  padding: 16px 20px;
+  color: #fff;
+  font-size: 15px;
+  line-height: 1.5;
+  z-index: 100;
+}
+#dialogBox .speaker {
+  color: #c6a135;
+  font-weight: bold;
+  margin-bottom: 4px;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+#dialogBox .text { color: #eee; }
+#dialogBox .hint {
+  color: #888;
+  font-size: 11px;
+  margin-top: 8px;
+  text-align: right;
+}
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 50;
+  pointer-events: none;
+}
+#hud .left, #hud .right { display: flex; flex-direction: column; gap: 4px; }
+#hud .stat {
+  font-size: 12px;
+  color: #c6a135;
+  text-shadow: 1px 1px 2px #000;
+}
+#hud .stat span { color: #fff; }
+#hud .zone-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ff4444;
+  text-shadow: 1px 1px 3px #000;
+}
+#titleScreen {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, #8B0000 0%, #FF8C00 30%, #FFD700 60%, #FF8C00 80%, #8B0000 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+#titleScreen h1 {
+  font-size: 48px;
+  color: #fff;
+  text-shadow: 3px 3px 0 #000, -1px -1px 0 #000;
+  margin-bottom: 5px;
+}
+#titleScreen h2 {
+  font-size: 18px;
+  color: #FFD700;
+  text-shadow: 2px 2px 0 #000;
+  margin-bottom: 30px;
+  font-style: italic;
+}
+#titleScreen .subtitle {
+  font-size: 13px;
+  color: #fff;
+  text-shadow: 1px 1px 0 #000;
+  margin-bottom: 5px;
+  opacity: 0.8;
+}
+#titleScreen .start-btn {
+  margin-top: 20px;
+  padding: 12px 40px;
+  font-size: 20px;
+  font-family: 'Courier New', monospace;
+  background: #8B0000;
+  color: #FFD700;
+  border: 3px solid #FFD700;
+  border-radius: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+#titleScreen .start-btn:hover { background: #AA0000; }
+#titleScreen .controls {
+  margin-top: 30px;
+  font-size: 11px;
+  color: #fff;
+  opacity: 0.7;
+  text-align: center;
+  line-height: 1.8;
+}
+#minimap {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  border: 2px solid #c6a135;
+  border-radius: 4px;
+  z-index: 50;
+  opacity: 0.85;
+}
+#notification {
+  display: none;
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(139, 0, 0, 0.9);
+  border: 2px solid #FFD700;
+  border-radius: 6px;
+  padding: 8px 20px;
+  color: #FFD700;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 150;
+  white-space: nowrap;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div id="gameContainer">
+  <canvas id="gameCanvas" width="960" height="640"></canvas>
+  <canvas id="minimap" width="140" height="140"></canvas>
+  <div id="hud">
+    <div class="left">
+      <div class="zone-name" id="zoneName">Plaza Mayor</div>
+      <div class="stat">Siesta Level: <span id="siestaLevel">0%</span></div>
+      <div class="stat">Sangria: <span id="sangriaCount">0</span></div>
+    </div>
+    <div class="right">
+      <div class="stat">Tapas: <span id="tapasCount">0/12</span></div>
+      <div class="stat">Colonies Apologized: <span id="coloniesCount">0/5</span></div>
+      <div class="stat">Time: <span id="gameTime">14:00</span></div>
+    </div>
+  </div>
+  <div id="dialogBox">
+    <div class="speaker" id="dialogSpeaker"></div>
+    <div class="text" id="dialogText"></div>
+    <div class="hint">[SPACE] to continue</div>
+  </div>
+  <div id="notification"></div>
+  <div id="titleScreen">
+    <h1>SPAIN SIMULATOR</h1>
+    <h2>La Vida Loca Edition</h2>
+    <div class="subtitle">Features: 100% historically inaccurate stereotypes</div>
+    <div class="subtitle">"Just like being there, but with more clich&eacute;s"</div>
+    <div class="subtitle">Rated P for Paella</div>
+    <button class="start-btn" id="startBtn">VAMOS!</button>
+    <div class="controls">
+      Arrow Keys / WASD: Move | SPACE: Interact<br>
+      Warning: Siesta is mandatory. Punctuality is optional.
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  SPAIN SIMULATOR - La Vida Loca Edition
+// ============================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const minimapCanvas = document.getElementById('minimap');
+const minimapCtx = minimapCanvas.getContext('2d');
+
+// --- CONSTANTS ---
+const TILE_W = 64;
+const TILE_H = 32;
+const MAP_W = 30;
+const MAP_H = 30;
+
+// Tile types
+const T = {
+  SAND: 0, GRASS: 1, ROAD: 2, PLAZA: 3, WATER: 4, BUILDING: 5,
+  BEACH: 6, BULL_RING: 7, MONUMENT: 8, BASQUE: 9, PORT: 10,
+  STADIUM: 11, FLAMENCO: 12, OLIVE: 13, CHURCH: 14, BAR: 15,
+  TOURIST_TRAP: 16, PAELLA: 17, WALL: 18, COLONY_PORT: 19, GRAFFITI: 20
+};
+
+// Colors for tiles
+const TILE_COLORS = {
+  [T.SAND]: '#e8d5a3',
+  [T.GRASS]: '#6b8e4e',
+  [T.ROAD]: '#8a8276',
+  [T.PLAZA]: '#c4a56c',
+  [T.WATER]: '#3a7abd',
+  [T.BUILDING]: '#a0522d',
+  [T.BEACH]: '#f5deb3',
+  [T.BULL_RING]: '#c43c3c',
+  [T.MONUMENT]: '#555555',
+  [T.BASQUE]: '#2d5a27',
+  [T.PORT]: '#5a4a3a',
+  [T.STADIUM]: '#2a6e2a',
+  [T.FLAMENCO]: '#c41e3a',
+  [T.OLIVE]: '#556b2f',
+  [T.CHURCH]: '#d4c5a9',
+  [T.BAR]: '#8b4513',
+  [T.TOURIST_TRAP]: '#ff69b4',
+  [T.PAELLA]: '#ffa500',
+  [T.WALL]: '#666666',
+  [T.COLONY_PORT]: '#4a3728',
+  [T.GRAFFITI]: '#333333',
+};
+
+const TILE_TOPS = {
+  [T.BUILDING]: '#8B4513',
+  [T.MONUMENT]: '#444444',
+  [T.CHURCH]: '#c4b599',
+  [T.BAR]: '#6b3410',
+  [T.WALL]: '#555555',
+  [T.BULL_RING]: '#a02020',
+  [T.STADIUM]: '#1a5e1a',
+};
+
+const WALKABLE = new Set([T.SAND, T.GRASS, T.ROAD, T.PLAZA, T.BEACH, T.BASQUE, T.PORT, T.FLAMENCO, T.OLIVE, T.COLONY_PORT, T.GRAFFITI, T.PAELLA, T.TOURIST_TRAP, T.STADIUM]);
+
+// Building heights (in pixels)
+const TILE_HEIGHT = {
+  [T.BUILDING]: 30,
+  [T.MONUMENT]: 50,
+  [T.CHURCH]: 45,
+  [T.BAR]: 20,
+  [T.WALL]: 15,
+  [T.BULL_RING]: 25,
+  [T.STADIUM]: 30,
+};
+
+// --- MAP GENERATION ---
+let map = [];
+function generateMap() {
+  // Fill with grass
+  for (let y = 0; y < MAP_H; y++) {
+    map[y] = [];
+    for (let x = 0; x < MAP_W; x++) {
+      map[y][x] = T.GRASS;
+    }
+  }
+
+  // Water edges (Mediterranean)
+  for (let x = 0; x < MAP_W; x++) {
+    map[0][x] = T.WATER;
+    map[1][x] = T.WATER;
+    if (x < 5 || x > MAP_W - 6) { map[2][x] = T.WATER; }
+  }
+  for (let y = 0; y < 5; y++) { map[y][0] = T.WATER; map[y][MAP_W-1] = T.WATER; }
+
+  // Beach zone (top, Benidorm-style) - OVERTOURISM CENTRAL
+  for (let x = 5; x < 20; x++) {
+    map[2][x] = T.BEACH;
+    map[3][x] = T.BEACH;
+    if (x >= 7 && x <= 17) map[4][x] = T.SAND;
+  }
+  // Tourist traps on beach
+  map[3][8] = T.TOURIST_TRAP;
+  map[3][12] = T.TOURIST_TRAP;
+  map[3][16] = T.TOURIST_TRAP;
+  map[4][10] = T.TOURIST_TRAP;
+  map[4][14] = T.TOURIST_TRAP;
+
+  // Main roads
+  for (let y = 5; y < MAP_H - 3; y++) {
+    map[y][14] = T.ROAD; // Main N-S road
+    map[y][15] = T.ROAD;
+  }
+  for (let x = 3; x < MAP_W - 3; x++) {
+    map[12][x] = T.ROAD; // Main E-W road
+    map[13][x] = T.ROAD;
+  }
+  // Cross roads
+  for (let x = 3; x < MAP_W - 3; x++) {
+    map[20][x] = T.ROAD;
+  }
+  for (let y = 5; y < MAP_H - 3; y++) {
+    map[y][7] = T.ROAD;
+    map[y][22] = T.ROAD;
+  }
+
+  // === PLAZA MAYOR (center) ===
+  for (let y = 10; y <= 15; y++) {
+    for (let x = 11; x <= 18; x++) {
+      map[y][x] = T.PLAZA;
+    }
+  }
+  // Buildings around plaza
+  map[10][11] = T.BAR; map[10][12] = T.BAR;
+  map[10][17] = T.CHURCH; map[10][18] = T.CHURCH;
+  map[15][11] = T.BUILDING; map[15][18] = T.BUILDING;
+
+  // === BULL RING (southeast) ===
+  for (let y = 16; y <= 19; y++) {
+    for (let x = 23; x <= 27; x++) {
+      if ((y === 16 || y === 19) || (x === 23 || x === 27)) {
+        map[y][x] = T.BULL_RING;
+      } else {
+        map[y][x] = T.SAND;
+      }
+    }
+  }
+
+  // === FLAMENCO DISTRICT (southwest) ===
+  for (let y = 16; y <= 19; y++) {
+    for (let x = 3; x <= 6; x++) {
+      map[y][x] = T.FLAMENCO;
+    }
+  }
+  map[17][4] = T.BAR; // Flamenco bar
+
+  // === BASQUE COUNTRY (far west) ===
+  for (let y = 5; y <= 10; y++) {
+    for (let x = 2; x <= 6; x++) {
+      map[y][x] = T.BASQUE;
+    }
+  }
+  map[6][3] = T.GRAFFITI;
+  map[8][5] = T.GRAFFITI;
+  map[7][4] = T.BAR; // Pintxos bar
+
+  // === FRANCO'S MONUMENT ZONE (northwest-ish) ===
+  for (let y = 6; y <= 9; y++) {
+    for (let x = 8; x <= 12; x++) {
+      map[y][x] = T.PLAZA;
+    }
+  }
+  map[7][10] = T.MONUMENT; // Valle de los Caidos-style
+  map[8][10] = T.MONUMENT;
+  map[6][9] = T.WALL; map[6][11] = T.WALL;
+
+  // === COLONY PORT (south) ===
+  for (let y = 24; y <= 28; y++) {
+    for (let x = 10; x <= 18; x++) {
+      if (y >= 27) {
+        map[y][x] = T.WATER;
+      } else {
+        map[y][x] = T.COLONY_PORT;
+      }
+    }
+  }
+  map[25][12] = T.BUILDING;
+  map[25][16] = T.BUILDING;
+  // Ships
+  map[27][13] = T.PORT;
+  map[27][15] = T.PORT;
+
+  // === FOOTBALL STADIUM (east) ===
+  for (let y = 8; y <= 11; y++) {
+    for (let x = 24; x <= 28; x++) {
+      if ((y === 8 || y === 11) || (x === 24 || x === 28)) {
+        map[y][x] = T.STADIUM;
+      } else {
+        map[y][x] = T.GRASS;
+      }
+    }
+  }
+
+  // === OLIVE GROVES (southeast rural) ===
+  for (let y = 22; y <= 26; y++) {
+    for (let x = 23; x <= 28; x++) {
+      map[y][x] = T.OLIVE;
+    }
+  }
+
+  // === PAELLA ZONE (near beach) ===
+  map[5][17] = T.PAELLA;
+  map[5][18] = T.PAELLA;
+  map[6][17] = T.PAELLA;
+  map[6][18] = T.BAR; // "Authentic" paella restaurant
+
+  // Scattered buildings
+  map[21][5] = T.BUILDING; map[21][6] = T.BUILDING;
+  map[22][5] = T.CHURCH;
+  map[9][20] = T.BUILDING; map[9][21] = T.BUILDING;
+  map[15][24] = T.BAR;
+  map[22][14] = T.BAR; // Tapas bar on main road
+
+  // Walls at map edges
+  for (let y = 0; y < MAP_H; y++) {
+    if (map[y][0] !== T.WATER) map[y][0] = T.WALL;
+    if (map[y][MAP_W-1] !== T.WATER) map[y][MAP_W-1] = T.WALL;
+  }
+  for (let x = 0; x < MAP_W; x++) {
+    if (map[MAP_H-1][x] !== T.WATER) map[MAP_H-1][x] = T.WALL;
+    if (map[MAP_H-2][x] !== T.WATER) map[MAP_H-2][x] = T.WALL;
+  }
+}
+
+// --- ZONE DETECTION ---
+function getZone(x, y) {
+  if (y <= 4 && x >= 5 && x <= 19) return 'Costa del Tourist';
+  if (y >= 5 && y <= 10 && x >= 2 && x <= 6) return 'Basque Country';
+  if (y >= 6 && y <= 9 && x >= 8 && x <= 12) return 'Valle de los Ca\u00eddos';
+  if (y >= 10 && y <= 15 && x >= 11 && x <= 18) return 'Plaza Mayor';
+  if (y >= 16 && y <= 19 && x >= 23 && x <= 27) return 'Plaza de Toros';
+  if (y >= 16 && y <= 19 && x >= 3 && x <= 6) return 'Barrio Flamenco';
+  if (y >= 8 && y <= 11 && x >= 24 && x <= 28) return 'Estadio Bernab\u00e9u';
+  if (y >= 24 && y <= 28 && x >= 10 && x <= 18) return 'Puerto Colonial';
+  if (y >= 22 && y <= 26 && x >= 23 && x <= 28) return 'Olive Groves';
+  if (x >= 17 && x <= 18 && y >= 5 && y <= 6) return 'Paella District';
+  return 'Streets of Spain';
+}
+
+// --- NPC SYSTEM ---
+const npcs = [
+  // BEACH / OVERTOURISM
+  { x: 9, y: 3, name: 'Sunburnt British Tourist', color: '#ff6666', dialogues: [
+    "Oi mate! Two pints of sangria and some PAYE-ELLA please! This is well better than Blackpool innit!",
+    "I've been coming to Benidorm for 30 years and never learned a word of Spanish. Why would I? Everyone speaks English here!",
+    "Can you believe they want us to RESPECT LOCAL CULTURE? I didn't pay 49 quid on Ryanair to not do shots at 10am!",
+  ]},
+  { x: 13, y: 3, name: 'Instagram Influencer', color: '#ff69b4', dialogues: [
+    "OMG this hidden gem is SO authentic! *takes 400th selfie in front of same church as 2 million other influencers*",
+    "I'm basically a local now. I've been here THREE days and I found this AMAZING tapas place... it's called... *checks phone* ...McDonald's??",
+    "The locals keep giving me dirty looks. Must be jealous of my content. #LivingMyBestVida #SpainWithoutTheS",
+  ]},
+  { x: 16, y: 4, name: 'Cruise Ship Horde', color: '#ff00ff', dialogues: [
+    "*5,000 people flood the narrow streets simultaneously* We have 3 hours to see ALL of Spain! Where's the Eiffel Tower?",
+    "This city is so CHARMING! Let me stand in the middle of this residential street blocking everyone for a photo!",
+    "Why are the locals protesting with 'TOURISTS GO HOME' signs? We're BOOSTING their economy with our 2 euro coffees!",
+  ]},
+
+  // PLAZA MAYOR
+  { x: 14, y: 11, name: 'Abuela Rosa', color: '#daa520', dialogues: [
+    "It's 2pm! Why are you walking around?! SIESTA TIME! Only mad dogs and tourists are out at this hour!",
+    "In my day we ate dinner at 11pm like CIVILIZED people. These young people eating at 8pm... practically breakfast!",
+    "You want directions? Go straight, then left at the bar, right at the other bar, past three more bars. You can't miss it.",
+  ]},
+  { x: 13, y: 14, name: 'Loud Man on Phone', color: '#ff8c00', dialogues: [
+    "*SHOUTING INTO PHONE FROM 50 METERS AWAY* S\u00cd HOMBRE! NO HOMBRE! VALE VALE VALE VALE! VENGA!",
+    "Why do you look startled? This is my QUIET voice! You should hear me at family dinner... 47 people, one conversation!",
+    "Spanish people aren't loud. Everyone else is just too quiet. It's a scientific fact. My cousin who's a doctor said so.",
+  ]},
+  { x: 16, y: 13, name: 'Bureaucracy Office', color: '#808080', dialogues: [
+    "You need Form B-47. But to get Form B-47 you need Form A-23. To get A-23, come back Tuesday. But we're closed Tuesday.",
+    "Your appointment was at 9:00. It is now 9:01. You'll need to reschedule. Next available slot: 7 months from now.",
+    "Ah, you want to register as a resident? You'll need: 3 passport photos, your birth certificate translated by a sworn translator, a letter from your bank, proof of address, a lock of hair, and your firstborn child. Come back with all of that and we'll tell you what you ACTUALLY need.",
+  ]},
+
+  // BASQUE COUNTRY
+  { x: 4, y: 6, name: 'Basque Nationalist', color: '#00aa00', dialogues: [
+    "We are NOT Spanish! We were here before the Romans, before the Celts, before EVERYONE! Our language is from ALIENS probably!",
+    "You see this wall? *points at graffiti* This used to say something... political. Now it says 'PINTXOS NOT TAPAS'. Progress!",
+    "ETA is gone but the SPIRIT lives on! ...the spirit of arguing about whether we're Spanish, I mean. At every family dinner. Forever.",
+  ]},
+  { x: 3, y: 9, name: 'Pintxos Chef', color: '#8fbc8f', dialogues: [
+    "You call those things in Madrid 'tapas'? Those are INSULTS! THIS is a pintxo! *presents elaborate tower of food on toothpick*",
+    "In the Basque Country we have the best food in Spain. In the world! Don't tell a Catalan I said that... actually, do. I don't care.",
+    "Every pintxo has exactly one toothpick. The toothpick is load-bearing. Remove it and civilization collapses.",
+  ]},
+
+  // FRANCO MONUMENT
+  { x: 10, y: 8, name: 'History Professor', color: '#b0b0b0', dialogues: [
+    "Ah, the monument. Spain's favorite topic: pretending 40 years of dictatorship was just a 'complicated period'.",
+    "Franco died in 1975. Some people's grandparents still whisper about politics. Trauma? What trauma? We don't talk about it! That's the Spanish way!",
+    "They moved his body from the Valley of the Fallen. The debate about it lasted longer than the actual dictatorship. Almost.",
+    "Fun fact: there are still streets named after Franco-era figures in some towns. Spain deals with its past like it deals with bureaucracy: slowly, reluctantly, and with lots of paperwork.",
+  ]},
+  { x: 9, y: 7, name: 'Old Man on Bench', color: '#c0c0c0', dialogues: [
+    "*muttering* In Franco's time the trains ran on time... actually no they didn't. Nothing ran on time. This is Spain.",
+    "I'm not saying it was better before! I'm not saying it was worse! I'm saying... *looks around nervously* ...nothing. I'm saying nothing.",
+    "The Civil War? My family was on BOTH sides. We still can't agree on what to have for Christmas dinner.",
+  ]},
+
+  // BULL RING
+  { x: 25, y: 17, name: 'Torero Miguel', color: '#ff0000', dialogues: [
+    "Bullfighting is ART! It is CULTURE! It is... *dodge* ...increasingly controversial and I'm considering a career change!",
+    "My grandfather was a torero. My father was a torero. I am a torero. My son wants to be a YouTuber. The tradition dies.",
+    "The bull is a noble creature! We honor it by... look, I know how it sounds. Just buy a ticket and pretend it's ballet.",
+  ]},
+  { x: 25, y: 18, name: 'Animal Rights Activist', color: '#00ff00', dialogues: [
+    "BAN BULLFIGHTING! It's barbaric! ...yes I'm wearing leather shoes, that's DIFFERENT somehow!",
+    "Catalonia banned it! Of course, they mainly did it to annoy Madrid, but still! Progress!",
+  ]},
+
+  // FLAMENCO DISTRICT
+  { x: 5, y: 17, name: 'Flamenco Dancer Carmen', color: '#c41e3a', dialogues: [
+    "OL\u00c9! *stamps feet aggressively* This is not just dancing! This is 500 years of PASSION and SUFFERING and DRAMA!",
+    "Every tourist thinks flamenco is just clapping. *claps in incredibly complex rhythm* Try THAT after three sangrias!",
+    "My grandmother danced flamenco. Her grandmother danced flamenco. We have been DRAMATICALLY STOMPING for centuries!",
+  ]},
+  { x: 4, y: 18, name: 'Guitar Player', color: '#deb887', dialogues: [
+    "*strums intensely* Every chord tells a story of HEARTBREAK! *strums again* That one was about losing my parking spot.",
+    "Tourists always request Despacito. DESPACITO! That's not even flamenco! That's not even SPANISH! It's Puerto Rican!",
+  ]},
+
+  // COLONY PORT
+  { x: 14, y: 25, name: 'Museum Curator', color: '#daa520', dialogues: [
+    "Welcome to the Museum of Colonial History! ...we prefer to call it 'The Age of Discovery'. Much friendlier branding!",
+    "Spain brought civilization to the Americas! ...and also smallpox, slavery, and the destruction of entire civilizations. But mainly civilization!",
+    "Our GOLD collection is magnificent! Where did it come from? ...Next question please.",
+    "We have a wonderful relationship with Latin America now! They send us their best footballers and we send them... um... tourists?",
+  ]},
+  { x: 12, y: 26, name: 'Mexican Tourist', color: '#006847', dialogues: [
+    "So THIS is where all our gold ended up. Nice museum. Can we have it back? No? Cool cool cool.",
+    "Spain conquered us 500 years ago and now they come to Canc\u00fan for spring break. How the turntables...",
+    "You want ME to apologize? MY ancestors were the ones being conquered! ...on both sides actually. It's complicated.",
+  ]},
+  { x: 16, y: 25, name: 'Peruvian Historian', color: '#d91023', dialogues: [
+    "Ah yes, Pizarro. Spain's great hero who conquered the Inca Empire with 168 men. Very brave. Much honor. Such wow.",
+    "Spain keeps asking why we're still upset. It's been 500 years! ...says the country that still argues about a Civil War from 1936.",
+    "They melted our golden sun temples into COINS. But sure, let's focus on the POSITIVE cultural exchange. Like... the Spanish language. You're welcome for using it, I guess?",
+  ]},
+  { x: 13, y: 24, name: 'Ship Captain Statue', color: '#888888', dialogues: [
+    "*plaque reads* 'In honor of Spain's great explorers who DISCOVERED lands where millions of people already lived'",
+    "*another plaque* 'Columbus sailed the ocean blue in 1492... and things went downhill for basically everyone else after that'",
+    "*graffiti on statue* 'DEVUELVAN EL ORO' (Give back the gold) - Repainted every week, cleaned every Monday",
+  ]},
+
+  // FOOTBALL STADIUM
+  { x: 26, y: 9, name: 'Passionate Fan Diego', color: '#ffffff', dialogues: [
+    "HALA MADRID! The greatest club in history! Barcelona? Never heard of them! They play in France now anyway, no? JAJAJA!",
+    "Football is not a sport in Spain. It's a RELIGION. The stadium is our cathedral. The referee is the DEVIL.",
+    "My family has been Real Madrid fans for generations. My cousin supports Barcel... WE DON'T TALK ABOUT HIM.",
+  ]},
+  { x: 26, y: 10, name: 'Catalan Independence Fan', color: '#fcdd09', dialogues: [
+    "VISCA BARSA! VISCA CATALUNYA! We are NOT Spanish! Well... for football purposes anyway. For the national team we make exceptions.",
+    "We want independence! ...but also to stay in La Liga. And the EU. And use the euro. INDEPENDENCE WITH BENEFITS!",
+    "Every Cl\u00e1sico is basically a civil war reenactment but with better hair products and more diving.",
+  ]},
+
+  // OLIVE GROVES
+  { x: 25, y: 24, name: 'Olive Oil Farmer', color: '#556b2f', dialogues: [
+    "Spain produces 50% of the world's olive oil! We put it on EVERYTHING! Bread? Oil. Salad? Oil. Dessert? Believe it or not, oil.",
+    "My olive trees are 400 years old. They survived the Reconquista, the Civil War, and TOURISTS PICKING OLIVES FOR INSTAGRAM.",
+    "Italian olive oil? HA! They BUY ours, put it in a fancy bottle, and sell it for triple! We're too busy napping to care!",
+  ]},
+
+  // PAELLA DISTRICT
+  { x: 17, y: 5, name: 'Valencian Chef', color: '#ffa500', dialogues: [
+    "THAT IS NOT PAELLA! *points at tourist restaurant* Paella has RABBIT and SNAILS! Not chorizo! NEVER CHORIZO!",
+    "Every region claims their version is authentic. They're all WRONG. Only Valencia makes REAL paella. This is NON-NEGOTIABLE.",
+    "A tourist once asked me to make paella with ketchup. I am still in therapy.",
+    "The SOCARRAT - the crispy bottom - is the SOUL of the paella. If it doesn't have socarrat, it's just RICE WITH THINGS!",
+  ]},
+
+  // ROAD ENCOUNTERS
+  { x: 14, y: 22, name: 'Tapas Bar Owner Paco', color: '#8b4513', dialogues: [
+    "Welcome! Sit! Eat! One beer = one free tapa. This is the LAW. Not actually but spiritually!",
+    "My jamón ibérico costs 200 euros per kilo. The pig ate only acorns. It lived better than most university students.",
+    "Close at 4pm, open at 9pm. What do I do in between? SIESTA! The greatest Spanish invention after jamón!",
+    "You want the bill? In Spain we say 'la cuenta' and then wait 45 minutes because the waiter is having a conversation with his cousin at the bar.",
+  ]},
+  { x: 20, y: 12, name: 'Lost German Tourist', color: '#ffcc00', dialogues: [
+    "Excuse me, I have a reservation for 7pm dinner. Why is the restaurant closed? It opens at NINE?! But I'll be asleep by then!",
+    "I organized my Spain trip with a detailed Excel spreadsheet. The spreadsheet is now USELESS. Nothing happens on time here!",
+    "I tried to buy groceries at 3pm. Everything was CLOSED. For SIESTA. The entire ECONOMY stops for a NAP!",
+  ]},
+  { x: 7, y: 15, name: 'Mamá Española', color: '#ff6699', dialogues: [
+    "My son is 37 and still lives at home. This is NORMAL here! Why pay rent when Mamá cooks better than any restaurant?",
+    "Dinner is at 10pm. If you eat before 9pm you are either a tourist or a PSYCHOPATH.",
+    "When my son said he was moving out I cried for three days. Then he came back because he couldn't do laundry. ORDER IS RESTORED.",
+  ]},
+  { x: 22, y: 20, name: 'Fiesta Committee', color: '#ff1493', dialogues: [
+    "FIESTA TIME! We have 14 local holidays, 4 national holidays, and 300 days of 'it's someone's saint day somewhere'!",
+    "San Fermín: we run from bulls! La Tomatina: we throw tomatoes! Las Fallas: we BURN things! Spanish fiestas are EXTREME!",
+    "Every village has its own fiesta. Population 200? FIESTA for 3 days! Budget? What budget?! We'll worry about that MAÑANA!",
+  ]},
+  { x: 8, y: 20, name: 'Construction Worker', color: '#ff8c00', dialogues: [
+    "This building has been 'under construction' since 2008. The financial crisis hit and we all went for a very long coffee break.",
+    "See that empty apartment block? That's from the housing bubble. Now it's an 'art installation'. Very avant-garde. Very empty.",
+    "La Sagrada Familia has been under construction since 1882. By Spanish standards, we're actually AHEAD of schedule!",
+  ]},
+];
+
+// --- GAME STATE ---
+let player = { x: 14, y: 12, dir: 0, moving: false, frame: 0 };
+let camera = { x: 0, y: 0 };
+let gameTime = 14 * 60; // 2:00 PM in minutes
+let stats = { siesta: 0, sangria: 0, tapas: 0, colonies: 0, totalTapas: 12, totalColonies: 5 };
+let dialogActive = false;
+let currentDialogue = null;
+let dialogQueue = [];
+let keys = {};
+let gameStarted = false;
+let npcTalkedTo = new Set();
+let lastNotification = 0;
+let siestaWarningShown = false;
+let moveTimer = 0;
+const MOVE_DELAY = 150; // ms between moves
+
+// --- ISOMETRIC HELPERS ---
+function toIso(x, y) {
+  return {
+    sx: (x - y) * (TILE_W / 2),
+    sy: (x + y) * (TILE_H / 2)
+  };
+}
+
+function updateCamera() {
+  const iso = toIso(player.x, player.y);
+  camera.x = iso.sx - canvas.width / 2 + TILE_W / 2;
+  camera.y = iso.sy - canvas.height / 2 + TILE_H / 2;
+}
+
+// --- DRAWING ---
+function drawTile(x, y, type) {
+  const iso = toIso(x, y);
+  const sx = iso.sx - camera.x;
+  const sy = iso.sy - camera.y;
+
+  // Skip offscreen tiles
+  if (sx < -TILE_W * 2 || sx > canvas.width + TILE_W * 2 || sy < -TILE_H * 4 || sy > canvas.height + TILE_H * 4) return;
+
+  const h = TILE_HEIGHT[type] || 0;
+  const baseColor = TILE_COLORS[type] || '#888';
+  const topColor = TILE_TOPS[type] || baseColor;
+
+  // Diamond shape for flat tiles
+  if (h === 0) {
+    ctx.beginPath();
+    ctx.moveTo(sx + TILE_W / 2, sy);
+    ctx.lineTo(sx + TILE_W, sy + TILE_H / 2);
+    ctx.lineTo(sx + TILE_W / 2, sy + TILE_H);
+    ctx.lineTo(sx, sy + TILE_H / 2);
+    ctx.closePath();
+    ctx.fillStyle = baseColor;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Special decorations on tiles
+    drawTileDecoration(sx, sy, type, x, y);
+  } else {
+    // 3D box for buildings
+    // Left face
+    ctx.beginPath();
+    ctx.moveTo(sx, sy + TILE_H / 2);
+    ctx.lineTo(sx + TILE_W / 2, sy + TILE_H);
+    ctx.lineTo(sx + TILE_W / 2, sy + TILE_H - h);
+    ctx.lineTo(sx, sy + TILE_H / 2 - h);
+    ctx.closePath();
+    ctx.fillStyle = shadeColor(baseColor, -20);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Right face
+    ctx.beginPath();
+    ctx.moveTo(sx + TILE_W / 2, sy + TILE_H);
+    ctx.lineTo(sx + TILE_W, sy + TILE_H / 2);
+    ctx.lineTo(sx + TILE_W, sy + TILE_H / 2 - h);
+    ctx.lineTo(sx + TILE_W / 2, sy + TILE_H - h);
+    ctx.closePath();
+    ctx.fillStyle = shadeColor(baseColor, -35);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Top face
+    ctx.beginPath();
+    ctx.moveTo(sx + TILE_W / 2, sy - h);
+    ctx.lineTo(sx + TILE_W, sy + TILE_H / 2 - h);
+    ctx.lineTo(sx + TILE_W / 2, sy + TILE_H - h);
+    ctx.lineTo(sx, sy + TILE_H / 2 - h);
+    ctx.closePath();
+    ctx.fillStyle = topColor;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    drawBuildingDecoration(sx, sy, h, type, x, y);
+  }
+}
+
+function drawTileDecoration(sx, sy, type, tx, ty) {
+  const cx = sx + TILE_W / 2;
+  const cy = sy + TILE_H / 2;
+
+  switch (type) {
+    case T.WATER:
+      // Waves
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 1;
+      const waveOff = Math.sin(Date.now() / 800 + tx * 2 + ty) * 3;
+      ctx.beginPath();
+      ctx.moveTo(cx - 12, cy + waveOff);
+      ctx.quadraticCurveTo(cx - 4, cy - 3 + waveOff, cx + 4, cy + waveOff);
+      ctx.quadraticCurveTo(cx + 12, cy + 3 + waveOff, cx + 18, cy + waveOff);
+      ctx.stroke();
+      break;
+    case T.BEACH:
+    case T.SAND:
+      // Beach dots
+      if ((tx + ty) % 3 === 0) {
+        ctx.fillStyle = 'rgba(200,180,120,0.5)';
+        ctx.beginPath();
+        ctx.arc(cx - 5, cy, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case T.TOURIST_TRAP:
+      // Umbrella
+      ctx.fillStyle = '#ff4444';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 8, 8, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#cc0000';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx, cy - 8);
+      ctx.stroke();
+      // Towel
+      ctx.fillStyle = '#4444ff';
+      ctx.fillRect(cx - 6, cy + 1, 12, 4);
+      break;
+    case T.OLIVE:
+      // Olive tree
+      ctx.fillStyle = '#3d5a1e';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 8, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#4a3520';
+      ctx.fillRect(cx - 1, cy - 3, 2, 6);
+      break;
+    case T.FLAMENCO:
+      // Red dots pattern
+      if ((tx + ty) % 2 === 0) {
+        ctx.fillStyle = 'rgba(255,0,0,0.2)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case T.BASQUE:
+      // Darker green with grass tufts
+      ctx.strokeStyle = '#1a4a12';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - 4, cy + 2);
+      ctx.lineTo(cx - 5, cy - 3);
+      ctx.moveTo(cx + 3, cy + 1);
+      ctx.lineTo(cx + 2, cy - 4);
+      ctx.stroke();
+      break;
+    case T.GRAFFITI:
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx - 10, cy - 6, 20, 12);
+      ctx.fillStyle = '#ff0000';
+      ctx.font = '7px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('ETA', cx, cy + 2);
+      break;
+    case T.PLAZA:
+      // Tile pattern
+      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, sy);
+      ctx.lineTo(cx, sy + TILE_H);
+      ctx.moveTo(sx, cy);
+      ctx.lineTo(sx + TILE_W, cy);
+      ctx.stroke();
+      break;
+    case T.COLONY_PORT:
+      // Wooden planks
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth = 0.5;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(sx + 5, cy + i * 3);
+        ctx.lineTo(sx + TILE_W - 5, cy + i * 3);
+        ctx.stroke();
+      }
+      break;
+    case T.PORT:
+      // Ship
+      ctx.fillStyle = '#5a3a1a';
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, cy);
+      ctx.lineTo(cx + 10, cy);
+      ctx.lineTo(cx + 7, cy + 5);
+      ctx.lineTo(cx - 7, cy + 5);
+      ctx.closePath();
+      ctx.fill();
+      // Mast
+      ctx.strokeStyle = '#3a2a1a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx, cy - 12);
+      ctx.stroke();
+      // Sail
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 12);
+      ctx.lineTo(cx + 8, cy - 6);
+      ctx.lineTo(cx, cy - 3);
+      ctx.closePath();
+      ctx.fill();
+      // Cross on sail
+      ctx.strokeStyle = '#cc0000';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx + 2, cy - 11);
+      ctx.lineTo(cx + 2, cy - 4);
+      ctx.moveTo(cx, cy - 8);
+      ctx.lineTo(cx + 5, cy - 8);
+      ctx.stroke();
+      break;
+    case T.PAELLA:
+      // Paella pan
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 9, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 7, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Rice bits
+      ctx.fillStyle = '#e8a000';
+      for (let i = 0; i < 5; i++) {
+        ctx.fillRect(cx - 4 + i * 2, cy - 1, 1, 2);
+      }
+      break;
+  }
+}
+
+function drawBuildingDecoration(sx, sy, h, type, tx, ty) {
+  const cx = sx + TILE_W / 2;
+
+  switch (type) {
+    case T.CHURCH:
+      // Cross on top
+      ctx.strokeStyle = '#8B7355';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, sy - h - 10);
+      ctx.lineTo(cx, sy - h);
+      ctx.moveTo(cx - 4, sy - h - 7);
+      ctx.lineTo(cx + 4, sy - h - 7);
+      ctx.stroke();
+      break;
+    case T.MONUMENT:
+      // Franco era monument - tall obelisk shape
+      ctx.fillStyle = '#555';
+      ctx.beginPath();
+      ctx.moveTo(cx - 3, sy + TILE_H / 2 - h);
+      ctx.lineTo(cx + 3, sy + TILE_H / 2 - h);
+      ctx.lineTo(cx + 1, sy + TILE_H / 2 - h - 15);
+      ctx.lineTo(cx - 1, sy + TILE_H / 2 - h - 15);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case T.BAR:
+      // Bar sign
+      ctx.fillStyle = '#FFD700';
+      ctx.font = '6px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('BAR', cx, sy + TILE_H / 2 - h + 6);
+      break;
+    case T.BULL_RING:
+      // Red trim
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + TILE_H / 2 - h);
+      ctx.lineTo(cx, sy - h);
+      ctx.lineTo(sx + TILE_W, sy + TILE_H / 2 - h);
+      ctx.stroke();
+      break;
+    case T.STADIUM:
+      // Green field indicator
+      ctx.fillStyle = '#00aa00';
+      ctx.font = '5px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('GOL', cx, sy + TILE_H / 2 - h + 6);
+      break;
+  }
+}
+
+function drawPlayer() {
+  const iso = toIso(player.x, player.y);
+  const sx = iso.sx - camera.x + TILE_W / 2;
+  const sy = iso.sy - camera.y + TILE_H / 2;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 2, 8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  ctx.fillStyle = '#e8c170';
+  ctx.beginPath();
+  ctx.arc(sx, sy - 12, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sombrero!
+  ctx.fillStyle = '#8B4513';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy - 18, 10, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(sx - 4, sy - 23, 8, 5);
+
+  // Body
+  ctx.fillStyle = '#cc0000'; // Red shirt naturally
+  ctx.fillRect(sx - 5, sy - 6, 10, 10);
+
+  // Legs
+  ctx.fillStyle = '#333';
+  ctx.fillRect(sx - 4, sy + 4, 3, 5);
+  ctx.fillRect(sx + 1, sy + 4, 3, 5);
+
+  // Eyes
+  ctx.fillStyle = '#000';
+  ctx.fillRect(sx - 3, sy - 13, 2, 2);
+  ctx.fillRect(sx + 1, sy - 13, 2, 2);
+
+  // Moustache!
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(sx - 4, sy - 10);
+  ctx.quadraticCurveTo(sx - 2, sy - 8, sx, sy - 10);
+  ctx.quadraticCurveTo(sx + 2, sy - 8, sx + 4, sy - 10);
+  ctx.stroke();
+}
+
+function drawNPC(npc) {
+  const iso = toIso(npc.x, npc.y);
+  const sx = iso.sx - camera.x + TILE_W / 2;
+  const sy = iso.sy - camera.y + TILE_H / 2;
+
+  if (sx < -50 || sx > canvas.width + 50 || sy < -50 || sy > canvas.height + 50) return;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 2, 7, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bobble animation
+  const bobble = Math.sin(Date.now() / 500 + npc.x * 3 + npc.y * 7) * 1.5;
+
+  // Head
+  ctx.fillStyle = '#e8c170';
+  ctx.beginPath();
+  ctx.arc(sx, sy - 12 + bobble, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  ctx.fillStyle = npc.color;
+  ctx.fillRect(sx - 4, sy - 6 + bobble, 8, 9);
+
+  // Legs
+  ctx.fillStyle = '#444';
+  ctx.fillRect(sx - 3, sy + 3 + bobble, 2, 4);
+  ctx.fillRect(sx + 1, sy + 3 + bobble, 2, 4);
+
+  // Eyes
+  ctx.fillStyle = '#000';
+  ctx.fillRect(sx - 2, sy - 13 + bobble, 1.5, 1.5);
+  ctx.fillRect(sx + 1, sy - 13 + bobble, 1.5, 1.5);
+
+  // Interaction indicator
+  const dist = Math.abs(player.x - npc.x) + Math.abs(player.y - npc.y);
+  if (dist <= 2) {
+    const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+    ctx.fillStyle = `rgba(255, 215, 0, ${pulse})`;
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('!', sx, sy - 22 + bobble);
+  }
+
+  // Name tag when close
+  if (dist <= 3) {
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    const nameWidth = ctx.measureText(npc.name).width;
+    ctx.fillRect(sx - nameWidth / 2 - 4, sy - 28 + bobble, nameWidth + 8, 12);
+    ctx.fillStyle = '#fff';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(npc.name, sx, sy - 19 + bobble);
+  }
+}
+
+function drawMinimap() {
+  minimapCtx.fillStyle = '#1a1a1a';
+  minimapCtx.fillRect(0, 0, 140, 140);
+
+  const scale = 140 / MAP_W;
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const type = map[y][x];
+      minimapCtx.fillStyle = TILE_COLORS[type] || '#888';
+      minimapCtx.fillRect(x * scale, y * scale, scale, scale);
+    }
+  }
+
+  // Player on minimap
+  minimapCtx.fillStyle = '#ff0';
+  minimapCtx.beginPath();
+  minimapCtx.arc(player.x * scale + scale / 2, player.y * scale + scale / 2, 3, 0, Math.PI * 2);
+  minimapCtx.fill();
+
+  // NPCs on minimap
+  npcs.forEach(npc => {
+    minimapCtx.fillStyle = npc.color;
+    minimapCtx.fillRect(npc.x * scale, npc.y * scale, scale, scale);
+  });
+}
+
+function shadeColor(color, percent) {
+  const num = parseInt(color.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+  const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
+  const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+  return `rgb(${R},${G},${B})`;
+}
+
+// --- GAME LOGIC ---
+function showDialog(speaker, text) {
+  dialogActive = true;
+  document.getElementById('dialogBox').style.display = 'block';
+  document.getElementById('dialogSpeaker').textContent = speaker;
+  document.getElementById('dialogText').textContent = text;
+}
+
+function hideDialog() {
+  if (dialogQueue.length > 0) {
+    const next = dialogQueue.shift();
+    showDialog(next.speaker, next.text);
+  } else {
+    dialogActive = false;
+    document.getElementById('dialogBox').style.display = 'none';
+  }
+}
+
+function showNotification(text) {
+  const el = document.getElementById('notification');
+  el.textContent = text;
+  el.style.display = 'block';
+  lastNotification = Date.now();
+  setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+function interact() {
+  if (dialogActive) {
+    hideDialog();
+    return;
+  }
+
+  // Check for nearby NPCs
+  for (const npc of npcs) {
+    const dist = Math.abs(player.x - npc.x) + Math.abs(player.y - npc.y);
+    if (dist <= 2) {
+      const dialog = npc.dialogues[Math.floor(Math.random() * npc.dialogues.length)];
+      showDialog(npc.name, dialog);
+
+      // Track stats
+      if (!npcTalkedTo.has(npc.name)) {
+        npcTalkedTo.add(npc.name);
+
+        if (npc.name.includes('Tourist') || npc.name.includes('Influencer') || npc.name.includes('Cruise') || npc.name.includes('German')) {
+          stats.sangria++;
+          showNotification('Sangria consumption increased! (+1)');
+        }
+        if (npc.name.includes('Chef') || npc.name.includes('Paco') || npc.name.includes('Valencian') || npc.name.includes('Pintxos') || npc.name.includes('Olive')) {
+          stats.tapas++;
+          showNotification('New tapa discovered! (' + stats.tapas + '/' + stats.totalTapas + ')');
+        }
+        if (npc.name.includes('Mexican') || npc.name.includes('Peruvian') || npc.name.includes('Museum Curator') || npc.name.includes('Ship Captain') || npc.name.includes('Historian')) {
+          stats.colonies++;
+          showNotification('Colonial guilt increased! (' + stats.colonies + '/' + stats.totalColonies + ')');
+        }
+      }
+      return;
+    }
+  }
+
+  // Check tile interactions
+  const tile = map[player.y]?.[player.x];
+  if (tile === T.TOURIST_TRAP) {
+    showDialog('Beach Vendor', 'CERVEZA! SANGRIA! PAELLA FOR ONLY 25 EUROS! Is authentic Spanish food! *microwave beeping in background*');
+  } else if (tile === T.GRAFFITI) {
+    showDialog('Wall', 'The graffiti reads various political slogans. Some have been painted over. Others have been painted over the paint-overs. It\'s graffiti all the way down.');
+  } else if (tile === T.PAELLA) {
+    showDialog('Your Nose', 'The smell of saffron and rice fills the air. Somewhere, a Valencian is crying because someone added chorizo.');
+  } else if (tile === T.FLAMENCO) {
+    showDialog('The Street', 'You hear aggressive stomping and passionate guitar from every direction. The entire neighborhood vibrates with DUENDE.');
+  } else if (tile === T.OLIVE) {
+    showDialog('Olive Tree', 'This tree has been producing olives since before Columbus was born. It has seen things. It does not judge. It just makes oil.');
+  } else if (tile === T.COLONY_PORT) {
+    showDialog('Historical Plaque', 'From this port, ships sailed to "discover" the New World. The New World was not lost, but that\'s a minor detail. The gold flowed back here. The apologies have not yet shipped.');
+  }
+}
+
+function tryMove(dx, dy) {
+  const nx = player.x + dx;
+  const ny = player.y + dy;
+  if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) return;
+  if (!WALKABLE.has(map[ny][nx])) return;
+
+  // Don't walk through NPCs
+  for (const npc of npcs) {
+    if (npc.x === nx && npc.y === ny) return;
+  }
+
+  player.x = nx;
+  player.y = ny;
+  player.frame++;
+}
+
+function updateHUD() {
+  document.getElementById('zoneName').textContent = getZone(player.x, player.y);
+  document.getElementById('siestaLevel').textContent = Math.min(100, stats.siesta) + '%';
+  document.getElementById('sangriaCount').textContent = stats.sangria;
+  document.getElementById('tapasCount').textContent = stats.tapas + '/' + stats.totalTapas;
+  document.getElementById('coloniesCount').textContent = stats.colonies + '/' + stats.totalColonies;
+
+  // Game time (advances slowly)
+  const hours = Math.floor(gameTime / 60);
+  const mins = Math.floor(gameTime % 60);
+  document.getElementById('gameTime').textContent =
+    String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0');
+}
+
+// --- SIESTA SYSTEM ---
+function checkSiesta() {
+  const hours = Math.floor(gameTime / 60);
+  if (hours >= 14 && hours < 17) {
+    if (!siestaWarningShown) {
+      siestaWarningShown = true;
+      dialogQueue = [];
+      showDialog('SIESTA POLICE', 'HALT! It is between 2pm and 5pm! All movement is SUSPICIOUS! Siesta is not optional - it is a CIVIC DUTY! Your siesta level is dangerously low!');
+      dialogQueue.push({ speaker: 'SIESTA POLICE', text: 'Every step you take during siesta hours damages the NATIONAL HONOR. At least PRETEND to be napping!' });
+    }
+    stats.siesta = Math.min(100, stats.siesta + 0.02);
+  } else if (hours >= 17) {
+    siestaWarningShown = false;
+  }
+
+  // Night time
+  if (hours >= 22) {
+    if (!siestaWarningShown) {
+      siestaWarningShown = true;
+      showDialog('Mamá', 'It\'s 10pm! DINNER TIME! Why are you walking around? The croquetas are getting COLD! ...Actually they were cold 2 hours ago because dinner was supposed to be at 10 but we got delayed arguing about politics!');
+    }
+  }
+}
+
+// --- MAIN LOOP ---
+function render() {
+  ctx.fillStyle = '#2a1a0a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  updateCamera();
+
+  // Time-based lighting
+  const hours = Math.floor(gameTime / 60);
+  let ambient = 1.0;
+  if (hours >= 20) ambient = 0.5 + (22 - hours) / 10;
+  if (hours >= 22) ambient = 0.3;
+  if (hours < 8) ambient = 0.4;
+
+  // Draw tiles in isometric order
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      drawTile(x, y, map[y][x]);
+    }
+
+    // Draw NPCs and player at correct y-layer
+    for (const npc of npcs) {
+      if (npc.y === y) drawNPC(npc);
+    }
+    if (player.y === y) drawPlayer();
+  }
+
+  // Ambient overlay for time of day
+  if (ambient < 1.0) {
+    ctx.fillStyle = `rgba(0, 0, 30, ${1.0 - ambient})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Siesta heat haze effect
+  if (hours >= 13 && hours < 17) {
+    ctx.fillStyle = 'rgba(255, 200, 50, 0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  drawMinimap();
+  updateHUD();
+}
+
+function update(timestamp) {
+  if (!gameStarted) return;
+
+  // Handle movement with delay
+  if (!dialogActive) {
+    if (timestamp - moveTimer > MOVE_DELAY) {
+      let moved = false;
+      if (keys['ArrowUp'] || keys['KeyW']) { tryMove(0, -1); moved = true; }
+      else if (keys['ArrowDown'] || keys['KeyS']) { tryMove(0, 1); moved = true; }
+      else if (keys['ArrowLeft'] || keys['KeyA']) { tryMove(-1, 0); moved = true; }
+      else if (keys['ArrowRight'] || keys['KeyD']) { tryMove(1, 0); moved = true; }
+
+      if (moved) moveTimer = timestamp;
+    }
+  }
+
+  // Advance game time
+  gameTime += 0.05;
+  if (gameTime >= 24 * 60) gameTime = 8 * 60; // Reset to morning
+
+  checkSiesta();
+  render();
+  requestAnimationFrame(update);
+}
+
+// --- INPUT ---
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (e.code === 'Space') {
+    e.preventDefault();
+    interact();
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+});
+
+// --- START ---
+document.getElementById('startBtn').addEventListener('click', () => {
+  document.getElementById('titleScreen').style.display = 'none';
+  gameStarted = true;
+  generateMap();
+  updateCamera();
+
+  // Opening dialogue
+  setTimeout(() => {
+    showDialog('NARRATOR', 'Welcome to SPAIN! Population: 47 million people who all eat dinner after 10pm. Your mission: explore every stereotype known to mankind.');
+    dialogQueue.push({ speaker: 'NARRATOR', text: 'Use ARROW KEYS to move. Press SPACE to talk to people (the ones with "!" over their heads). Try not to offend anyone. (You will fail.)' });
+    dialogQueue.push({ speaker: 'NARRATOR', text: 'REMEMBER: Nothing opens before 10am. Everything closes for siesta. Dinner is at 10pm. Mañana means never. VAMOS!' });
+  }, 500);
+
+  requestAnimationFrame(update);
+});
+
+// Prevent scrolling
+window.addEventListener('keydown', (e) => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+    e.preventDefault();
+  }
+});
+</script>
+</body>
+</html>
